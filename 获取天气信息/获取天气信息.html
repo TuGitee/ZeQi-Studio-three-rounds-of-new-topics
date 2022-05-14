@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>获取天气信息</title>
+    <style>
+        * {
+            text-align: center;
+        }
+
+        h2 {
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 5px;
+            padding-bottom: 10px;
+        }
+
+        input {
+            position: relative;
+            text-align: left;
+            z-index: 1;
+            border-radius: 7px;
+            outline: none;
+            padding-left: 5px;
+            margin-right: 10px;
+            width: 200px;
+            height: 30px;
+        }
+
+        #city {
+            font-weight: 700;
+            margin-top: 20px;
+        }
+
+        .copy {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        #box {
+            position: relative;
+            width: fit-content;
+            margin: 0px auto;
+        }
+
+        #weather,
+        #match {
+            list-style: none;
+            padding: 0px;
+        }
+
+        #match {
+            overflow: hidden;
+            margin-top: 0px;
+            padding-top: 10px;
+            display: none;
+            position: absolute;
+            top: 19px;
+            width: 198px;
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+            border-radius: 0px 0px 10px 10px;
+        }
+
+        #match li {
+            padding: 5px 0px;
+            padding-left: 10px;
+            padding-right: 10px;
+            text-align: left;
+            font-size: 15px;
+            background-color: white;
+            user-select: none;
+        }
+
+        #match li:nth-child(n):not(:last-child) {
+            border-bottom: 1px solid #ccc;
+        }
+
+        #match li:hover {
+            background-color: #eee;
+        }
+
+        .on-choose {
+            background-color: #ccc !important;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h2>天气查询</h2>
+    <div class="copy">常见的城市及其编号(供拷贝): 北京 101010100, 成都 101270101, 福州 101230101</div>
+    <div id="box">
+        <input type="search" placeholder="请输入您要查询的城市" />
+        <button>点击查询</button>
+        <ul id="match"></ul>
+    </div>
+    <div id="city"></div>
+    <ul id="weather"></ul>
+    <script>
+        const btn = document.querySelector('button');
+        const input = document.querySelector('input');
+        const city = document.querySelector('#city');
+        const weather = document.querySelector('#weather');
+        //匹配全都是中文
+        const matchCity = /^[\u4e00-\u9fa5]+$/;
+        //匹配全都是数字
+        const matchCityKey = /^\d{9}$/;
+        const word = /[^\d\u4e00-\u9fa5]/;
+        //异步请求数据
+        function getWeatherURL(url) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', url);
+                xhr.send();
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(JSON.parse(xhr.response));
+                        }
+                        else {
+                            reject(xhr.status);
+                        }
+                    }
+                }
+            })
+        }
+        //处理api的数据
+        function getWeather(value) {
+            city.innerHTML = '';
+            weather.innerHTML = '';
+            city.innerHTML = value.data.city + '天气：';
+            let year = new Date().getFullYear();
+            let month = new Date().getMonth() + 1;
+            for (let i = 0; i < value.data.forecast.length; i++) {
+                var li = document.createElement('li');
+                li.innerHTML = year + '年' + month + '月' + value.data.forecast[i].date + '&emsp;' + value.data.forecast[i].fengli + value.data.forecast[i].fengxiang + '&emsp;' + value.data.forecast[i].low + ' ~ ' + value.data.forecast[i].high + '&emsp;' + value.data.forecast[i].type;
+                weather.appendChild(li);
+            }
+        }
+        // 监听enter事件
+        document.addEventListener('keyup', function (e) {
+            if (e.key == 'Enter') {
+                btn.click();
+                input.blur();
+            }
+        })
+        // 获取
+        btn.addEventListener('click', (e) => {
+            if (dataList.length == 1 && dataList[0] == '') {
+                alert('输入城市或编号不正确，请检查！');
+                return;
+            }
+            input.value = dataList[index];
+            let inputValue = input.value.trim();
+            if (inputValue == '') return;
+            //if (!word.test(inputValue)) {
+            let flag = matchCity.test(inputValue);
+            if (flag == true) {
+                getWeatherURL('http://wthrcdn.etouch.cn/weather_mini?city=' + inputValue).then(
+                    value => {
+                        if (value.status > 1000) {
+                            alert(value.desc);
+                        }else {
+                            getWeather(value);
+                        }
+                    }, reason => {
+                        console.log(reason);
+                    });
+                return;
+            }
+            flag = matchCityKey.test(inputValue);
+            if (flag == true) {
+                getWeatherURL('http://wthrcdn.etouch.cn/weather_mini?citykey=' + inputValue).then(
+                    value => {
+                        if (value.status > 1000) {
+                            alert(value.desc);
+                        }else {
+                            getWeather(value);
+                        }
+                    }, reason => {
+                        console.log(reason);
+                    });
+                e.stopPropagation();
+                }
+            })
+        // 获取所有城市地区
+        var dataList = '';
+        const match = document.getElementById('match');
+
+        // 下拉匹配正则表达
+        function createList() {
+            if (dataList.length == 1 && dataList[0] == '') {
+                var li = document.createElement('li');
+                li.style.color = '#666';
+                li.style.textAlign = 'center';
+                li.style.fontWeight = '700';
+                li.innerHTML = '没有匹配的城市或地区';
+                match.appendChild(li);
+                return;
+            }
+            for (var i = 0; i < dataList.length; i++) {
+                var li = document.createElement('li');
+                li.setAttribute('data-index', i);
+                li.innerHTML = dataList[i];
+                match.appendChild(li);
+            }
+            index = 0;
+            if (match.children[0] != undefined)
+                match.children[0].className = 'on-choose';
+        }
+        // 点击初始化
+        var index = 0;
+        input.addEventListener('focus', function (e) {
+            match.style.display = 'block';
+            cityFunc(input.value);
+            index = 0;
+            if (match.children[index] != undefined)
+                match.children[index].className = 'on-choose';
+            //方便清除函数
+            document.onkeyup = null;
+            document.onkeyup = function () {
+                keyChoose();
+            };
+            input.addEventListener('blur', function () {
+                match.style.display = 'none';
+            })
+        })
+        function keyChoose() {
+            if (dataList[0] != '') {
+                if (event.key == 'ArrowUp' && index > 0) {
+                    for (var i = 0; i < match.children.length; i++) {
+                        match.children[i].className = '';
+                    }
+                    index--;
+                    match.children[index].className = 'on-choose';
+                }
+                else if (event.key == 'ArrowDown' && index < match.children.length - 1) {
+                    for (var i = 0; i < match.children.length; i++) {
+                        match.children[i].className = '';
+                    }
+                    index++;
+                    match.children[index].className = 'on-choose';
+                }
+            }
+        }
+        // 节流阀
+        var cityFlag = false;
+        function getCitysURL() {
+            return new Promise((resolve, reject) => {
+                var cityXHR = new XMLHttpRequest();
+                cityXHR.open('POST', 'http://127.0.0.1:8000/citys', true);
+                if (cityFlag) cityXHR.abort();
+                cityFlag = true;
+                cityXHR.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                cityXHR.send('city=' + input.value);
+                cityXHR.onreadystatechange = function () {
+                    if (cityXHR.readyState === 4) {
+                        if (cityXHR.status >= 200 && cityXHR.status < 300) {
+                            resolve(cityXHR.response);
+                        } else {
+                            reject(xhr.status);
+                        }
+                        cityFlag = false;
+                    }
+                }
+            })
+        }
+        function cityFunc(str) {
+            getCitysURL().then(value => {
+                dataList = value.split(' ');
+                match.innerHTML = '';
+                createList();
+            })
+        }
+        input.addEventListener('input', function (e) {
+            if (e.key != 'ArrowDown' && e.key != 'ArrowUp') {
+                cityFunc(input.value);
+            }else {
+                e.preventDefault&&e.preventDefault();
+            }
+        })
+        // 点击下拉替换文本
+        match.addEventListener('mousedown', function (e) {
+            for (var i = 0; i < match.children.length; i++) {
+                match.children[i].className = '';
+            }
+            index = e.target.getAttribute('data-index');
+            e.target.className = 'on-choose';
+            if (e.target.innerHTML != '没有匹配的城市或地区')
+                input.value = e.target.innerHTML;
+        })
+    </script>
+</body>
+
+</html>
